@@ -48,7 +48,32 @@ function doPost(e) {
   }
 }
 
-// Optional: visiting the web app URL in a browser shows a simple health check.
+// Visiting the web app URL in a browser shows a health check, plus which
+// spreadsheet this script is writing to and how many replies it holds.
 function doGet() {
-  return ContentService.createTextOutput("RSVP endpoint is live.");
+  var out = { status: "RSVP endpoint is live" };
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) {
+      out.problem = "Script is NOT attached to any spreadsheet (standalone script).";
+    } else {
+      out.spreadsheetName = ss.getName();
+      out.spreadsheetUrl = ss.getUrl();
+      var sheet = ss.getSheetByName(SHEET_NAME);
+      if (!sheet) {
+        out.replyCount = 0;
+        out.note = "No '" + SHEET_NAME + "' tab yet - it is created on the first reply.";
+      } else {
+        out.replyCount = Math.max(0, sheet.getLastRow() - 1);
+        if (sheet.getLastRow() > 1) {
+          out.latestReply = sheet.getRange(sheet.getLastRow(), 1, 1, 5).getDisplayValues()[0];
+        }
+      }
+    }
+  } catch (err) {
+    out.problem = String(err);
+  }
+  return ContentService
+    .createTextOutput(JSON.stringify(out, null, 2))
+    .setMimeType(ContentService.MimeType.JSON);
 }
